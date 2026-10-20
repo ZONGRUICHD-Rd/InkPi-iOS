@@ -8,7 +8,7 @@ options:
 settings:
   base:
     MARKETING_VERSION: 0.1.0-dev
-    CURRENT_PROJECT_VERSION: 1
+    CURRENT_PROJECT_VERSION: 2
     SWIFT_VERSION: "5.0"
     SWIFT_STRICT_CONCURRENCY: minimal
     ENABLE_USER_SCRIPT_SANDBOXING: YES
@@ -34,9 +34,10 @@ targets:
         NSLocalNetworkUsageDescription: InkPi 需要访问局域网，连接同一 Wi-Fi 下的 InkPi 设备，以及配网时设备的热点。
         NSAppTransportSecurity:
           # Development build: plain HTTP to the cloud API, the Pi on the LAN
-          # and the 10.42.0.1 setup hotspot.
+          # and the 10.42.0.1 setup hotspot. Only NSAllowsArbitraryLoads:
+          # iOS ignores it when NSAllowsLocalNetworking (or the media/web
+          # content variants) is also present, which blocks the cloud API.
           NSAllowsArbitraryLoads: true
-          NSAllowsLocalNetworking: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.inkpi.app
