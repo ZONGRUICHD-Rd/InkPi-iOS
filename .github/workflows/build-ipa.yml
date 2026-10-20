@@ -1,0 +1,85 @@
+name: Build IPA
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Unsigned IPA (iOS 26 SDK)
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Select Xcode 26
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -n 1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i iphoneos
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+
+      - name: Build (Release, no code signing)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project InkPi.xcodeproj \
+            -scheme InkPi \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build | xcbeautify --renderer github-actions
+
+      - name: Package IPA
+        run: |
+          APP=build/Build/Products/Release-iphoneos/InkPi.app
+          test -d "$APP"
+          rm -rf Payload && mkdir Payload
+          cp -R "$APP" Payload/
+          zip -qry InkPi-unsigned.ipa Payload
+          ls -lh InkPi-unsigned.ipa
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :MinimumOSVersion" "$APP/Info.plist"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: InkPi-unsigned-ipa
+          path: InkPi-unsigned.ipa
+          if-no-files-found: error
+
+      # Artifacts need a GitHub login to download; a rolling prerelease gives
+      # a public direct link for Sideloadly / AltStore.
+      - name: Publish rolling prerelease
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=latest
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then TAG="${GITHUB_REF_NAME}"; fi
+          NOTES="Unsigned development build from ${GITHUB_SHA::7}. Sign and install with Sideloadly or AltStore."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" InkPi-unsigned.ipa --clobber
+            gh release edit "$TAG" --notes "$NOTES"
+          else
+            gh release create "$TAG" InkPi-unsigned.ipa --prerelease --title "InkPi iOS ($TAG)" --notes "$NOTES" --target "$GITHUB_SHA"
+          fi

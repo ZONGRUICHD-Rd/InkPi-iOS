@@ -1,0 +1,55 @@
+# XcodeGen spec. `xcodegen generate` creates InkPi.xcodeproj (CI does this).
+name: InkPi
+options:
+  bundleIdPrefix: com.inkpi
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: 0.1.0-dev
+    CURRENT_PROJECT_VERSION: 1
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+targets:
+  InkPi:
+    type: application
+    platform: iOS
+    sources:
+      - path: InkPi
+    info:
+      path: InkPi/Info.plist
+      properties:
+        CFBundleDisplayName: InkPi
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: zh-Hans
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        ITSAppUsesNonExemptEncryption: false
+        NSLocalNetworkUsageDescription: InkPi 需要访问局域网，连接同一 Wi-Fi 下的 InkPi 设备，以及配网时设备的热点。
+        NSAppTransportSecurity:
+          # Development build: plain HTTP to the cloud API, the Pi on the LAN
+          # and the 10.42.0.1 setup hotspot.
+          NSAllowsArbitraryLoads: true
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.inkpi.app
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO
+schemes:
+  InkPi:
+    build:
+      targets:
+        InkPi: all
+    run:
+      config: Debug
+    archive:
+      config: Release
